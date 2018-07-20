@@ -1,6 +1,6 @@
 # lol-teammates-tally
 
-Lol-teammates-tally is a program that takes in an in-game league of legend name and compute a text file containing informations of the teammates that the player have played and other relevant informations.
+Lol-teammates-tally is a program that takes in an in-game league of legend name and compute a text file containing informations of the teammates that the player have played with and other relevant informations.
 
 All match history retrieve will be saved in local disk.
 
