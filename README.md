@@ -4,7 +4,7 @@
 
 LoL-Player-Tracker return a list of all the teammate and opposing players a player had in the past.
  
-LoL-Player-Tracker takes in an in-game name & region and compute a text file containing informations of the teammates that the player have played with and other relevant informations.
+LoL-Player-Tracker takes in an in-game name & region and compute a text file containing informations of the players that the player have played with and other relevant informations.
 
 All match history retrieve will be saved in local disk.
 
