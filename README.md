@@ -1,10 +1,10 @@
-# LoL-player-tracker
+# LoL-Player-Tracker
 
 ### What this program do
 
-LoL-player-tracker return a list of all the teammate and opposing players a player had in the past.
+LoL-Player-Tracker return a list of all the teammate and opposing players a player had in the past.
  
-LoL-player-tracker takes in an in-game name & region and compute a text file containing informations of the teammates that the player have played with and other relevant informations.
+LoL-Player-Tracker takes in an in-game name & region and compute a text file containing informations of the teammates that the player have played with and other relevant informations.
 
 All match history retrieve will be saved in local disk.
 
@@ -19,4 +19,4 @@ $ python 1.py
 ...
 ```
 
-LoL-player-tracker is not affiliated with Riot Games, this is a personal project.
+LoL-Player-Tracker is not affiliated with Riot Games, this is a personal project.
