@@ -288,5 +288,6 @@ def make_folders ():
 if __name__ == "__main__":
         #apple OCE
         make_folders()
-        D = DataParser('yournewmom','NA1')
+        #D = DataParser('yournewmom','NA1')
+        D = DataParser('A Cute Cat Irl','NA1')
         D.mainloop()
