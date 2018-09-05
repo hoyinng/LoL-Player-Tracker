@@ -1,10 +1,10 @@
-# lol-teammates-tally
+# LoL-player-tracker
 
 ### What this program do
 
-Lol-teammates-tally return a list of all the teammate and opposing players a player had in the past.
+LoL-player-tracker return a list of all the teammate and opposing players a player had in the past.
  
-Lol-teammates-tally takes in an in-game name & region and compute a text file containing informations of the teammates that the player have played with and other relevant informations.
+LoL-player-tracker takes in an in-game name & region and compute a text file containing informations of the teammates that the player have played with and other relevant informations.
 
 All match history retrieve will be saved in local disk.
 
@@ -19,4 +19,4 @@ $ python 1.py
 ...
 ```
 
-lol-tally-teammates is not affiliated with Riot Games, this is a personal project.
+LoL-player-tracker is not affiliated with Riot Games, this is a personal project.
