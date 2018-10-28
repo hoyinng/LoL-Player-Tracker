@@ -2,6 +2,8 @@ import json
 import time
 import threading
 import os
+import argparse
+
 from functools import reduce
 platform_ids = ['NA1','OC1','OC','NA','KR','EUW','EUW1','EUNE','EUNE1']
 rate = 20
@@ -112,17 +114,16 @@ class DataParser :
                 for platform in platform_ids:
                         self.stored_match_infos[platform] = set()
                         try: self.stored_match_infos[platform] = set(read_index(platform))
-                        except: pass
+                        except: Exception('Region not found')
                 try:
                         self.summoner_id = get_account_id(sn,rg)
                         self.platform_id = get_platform_id(sn,rg)
                         print ("Summoner Name : {}".format(sn))
                         print ("Summoner ID :{}, Platform ID: {}".format(self.summoner_id,self.platform_id))
                 except:
-                        print ('Player not found')
-                        raise
-        def mainloop(self):
-                self.run()
+                        raise SystemExit('Summoner: `{}` not found in region {}'.format(sn.replace('+',' '),rg))
+        #def mainloop(self):
+        #        self.run()
       
         def run (self):
                 self.pages = dict()
@@ -203,7 +204,19 @@ class DataParser :
                                 
                 
                 write_every_single_thing_new(self.summoners,self.summoner_name,len(self.full_match_history),self.summoner_names,self.platform_id)
-                
+        def dump_json (self):
+                x = 0
+                fname='dump{}.json'.format(x)
+                while ((os.path.exists(fname))):
+                        x+=1
+                        fname='dump{}.json'.format(x)
+                print('Writing Json {}'.format(fname))
+                d = {'Summoners': list(self.summoners),
+                     'Summoner_names': list(self.summoner_names),
+                     'Summoner_match_history': self.full_match_history}
+                with open(fname,'w') as f:
+                        json.dump(d,f)
+                        
 def write_every_single_thing_new (ddd,name,N,summoner_names,pid):
         if os.path.exists("results") == False: os.mkdir("results")
         if os.path.exists(os.path.join("results",pid)) == False: os.mkdir(os.path.join("results",pid))
@@ -269,6 +282,7 @@ def read_index(platform_id):
                 f.close()
                 return k
 def write_match_history_list(match_list,summoner_id,platform_id):
+        print ('Writing result in {}'.format(os.path.join("Match_List",platform_id,str(summoner_id))))
         with open(os.path.join("Match_List",platform_id,str(summoner_id)),'w') as f:
                 json.dump(match_list, f)
         f.close()
@@ -285,9 +299,41 @@ def make_folders ():
                 p1 = os.path.join("Match_Infos",pid)
                 if not(os.path.exists(p)): os.mkdir (p)
                 if not(os.path.exists(p1)): os.mkdir (p1)
+def region_id_check(r):
+        if r not in platform_ids:
+                raise argparse.ArgumentTypeError("{} is an invalid region.\nRegion supported are {}".format(r , str(platform_ids)))
+        return r
+def summoner_name_check (n):
+        if n == "" or n == [''] or n == None or n == list():
+                raise argparse.ArgumentTypeError("Summoner Name cannot be empty")
+        return n
 if __name__ == "__main__":
         #apple OCE
-        make_folders()
+        #make_folders()
+        #D = DataParser('apple','OCE')
         #D = DataParser('yournewmom','NA1')
-        D = DataParser('A Cute Cat Irl','NA1')
-        D.mainloop()
+        #D = DataParser('A Cute Cat Irl','NA1')
+        #D.run()
+        #D.dump_json()
+
+        parser = argparse.ArgumentParser(usage='%(prog)s [options]\n')#\t ex: python 1.py -name A Cute Cat Irl -region NA1 ')
+        parser.add_argument('-name','--name', required=True, metavar='',
+                            type=summoner_name_check, nargs='+',
+                            help='A summoner name ex: A cute cat irl')
+        parser.add_argument('-region','--region',required=True, metavar='region', type=region_id_check,
+                           help='A region id {}'.format(str(platform_ids)))
+        parser.add_argument('--json','-json',dest='write_json', action='store_true',
+                    default=False,
+                    help='Dump json file after a search')
+        
+        args = parser.parse_args()
+        name = reduce((lambda x,y: x + ' ' + y ),args.name)
+        region = args.region
+        
+        D = DataParser(name,region)
+        D.run()
+        if (args.write_json):
+                D.dump_json()
+        
+        
+        
