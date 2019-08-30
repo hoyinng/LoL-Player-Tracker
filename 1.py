@@ -5,8 +5,11 @@ import os
 import argparse
 
 from functools import reduce
-platform_ids = ['NA1','OC1','OC','NA','KR','EUW','EUW1','EUNE','EUNE1']
+platform_ids = ['NA1','OC1','OC','NA','KR','EUW','EUW1','EUNE','EUNE1','TR1']
 rate = 20
+
+##https://github.com/loldevs/leaguespec/wiki/Lobby-REST-Service
+##https://www.reddit.com/r/leagueoflegends/comments/27wax9/the_new_match_history/
 
 class Watch :
         def __init__(self):
@@ -16,25 +19,36 @@ class Watch :
         def stop (self):
                 self.value = True
                 return self
-def get_history (lower_bound,player_id,platform_id):
+
+
+def get_history (lower_bound, player_id, platform_id):
         import requests
         l = 'https://acs.leagueoflegends.com/v1/stats/player_history/{}/{}?begIndex={}&endIndex={}&'.format(platform_id,player_id,lower_bound,lower_bound+rate)
         d = None
+        
         while True:
                 d = json.loads(requests.get(l).text)
-                if d == {"httpStatus": 429, "errorCode": "CLIENT_RATE_LIMITED"}: continue
+                if d == {"httpStatus": 429, "errorCode": "CLIENT_RATE_LIMITED"}:
+                        time.sleep(1)
                 break
         return [(game['gameId'], game['platformId']) for game in d['games']['games']]
-def get_matches_info (match_id,pid):
+
+
+def get_matches_info (match_id, pid):
         import requests
         d = None
         l = 'https://acs.leagueoflegends.com/v1/stats/game/{}/{}'.format(pid,match_id)
+        
         while True:
                 d = json.loads(requests.get(l).text)
-                if d == {"httpStatus": 429, "errorCode": "CLIENT_RATE_LIMITED"}: continue
+                if d == {"httpStatus": 429, "errorCode": "CLIENT_RATE_LIMITED"}:
+                        time.sleep(0.5)
+                        continue
                 break
         return d
-def get_account_id(summoner,region):
+
+
+def get_account_id(summoner, region):
         import requests
         while True:
                 l = 'https://acs.leagueoflegends.com/v1/players?name={}&region={}'.format(summoner,region)
@@ -42,7 +56,9 @@ def get_account_id(summoner,region):
                 if d == {"httpStatus": 429, "errorCode": "CLIENT_RATE_LIMITED"}: continue
                 break
         return d['accountId']
-def get_platform_id(summoner,region):
+
+
+def get_platform_id(summoner, region):
         import requests
         while True:
                 l = 'https://acs.leagueoflegends.com/v1/players?name={}&region={}'.format(summoner,region)
@@ -50,22 +66,35 @@ def get_platform_id(summoner,region):
                 if d == {"httpStatus": 429, "errorCode": "CLIENT_RATE_LIMITED"}: continue
                 break
         return d['platformId']
+
+
 def get_all_summoners_old(data):
         return ([(players['player']['summonerName'],players['player']['platformId']) for players in data['participantIdentities']])
+
+
 def get_all_summoners(data):
         return ([(players['player']['summonerName'],players['player']['accountId']) for players in data['participantIdentities']])
-def load_page (pages,page,summoner_id,platform_id,s,sw):
+
+
+def load_page (pages, page, summoner_id, platform_id, s, sw, rate):
         match = []
         while True:
                 try:
                         match = get_history(page*rate, summoner_id,platform_id)
                         break
                 except:
-                        time.sleep(0.01)
-        if match == []: sw.stop()
-        else:pages[page] = match
+                        time.sleep(0.1)
+                        
+        if len(match) != rate:
+                sw.stop()
+                
+        if match == []:
+                sw.stop()
+        else:
+                pages[page] = match
         s.release()
-        
+
+
 def load_match_history (match_infos,match_id,s,matches_in_storage,platform_id):
         try:
                 if match_id in matches_in_storage or os.path.exists(os.path.join("Match_Infos",platform_id,str(match_id))):
@@ -73,7 +102,8 @@ def load_match_history (match_infos,match_id,s,matches_in_storage,platform_id):
                         matches_in_storage[platform_id].add(match_id)
                         s.release()
                         return
-        except: pass
+        except:
+                pass
         while True:
                 try:
                         data = get_matches_info(match_id,platform_id)
@@ -85,7 +115,8 @@ def load_match_history (match_infos,match_id,s,matches_in_storage,platform_id):
         match_infos[str(match_id)+platform_id] = data
         write_match_info(data,match_id,platform_id)
         s.release()
-        
+
+
 def update_match_list(existing_list,summoner_id,platform_id):
         page = 0
         new_match_found = False
@@ -106,6 +137,8 @@ def update_match_list(existing_list,summoner_id,platform_id):
                         new_match_found = True
                 existing_list.append((match,mpid))
         return new_match_found
+
+
 class DataParser :
         def __init__(self,sn,rg):
                 self.summoner_name = sn
@@ -132,34 +165,36 @@ class DataParser :
                 self.summoner_names = dict()
                 page = 0
                 t = []
-                semaphore = threading.BoundedSemaphore(20)
+                semaphore = threading.BoundedSemaphore(10)
                 stop_watch = Watch()
                 match_history_loaded = False # look for player's match history locally
+                
                 try:
                         self.full_match_history = read_match_history_list(self.summoner_id,self.platform_id)
                         match_history_loaded = True
                         print ("Match History Loaded: {}".format(match_history_loaded))
                         new_match_found = update_match_list(self.full_match_history,self.summoner_id,self.platform_id)    # look for new matches
                         print ("New match found: {}".format(new_match_found))
-                        
                         if new_match_found:
                                 write_match_history_list(self.full_match_history,self.summoner_id,self.platform_id)
-                except :
+                        
+                except:
                         print ("Match History Loaded: {}".format(match_history_loaded))
- 
-                if match_history_loaded == False : 
+
+                if match_history_loaded is False :
                         print ("Downloading match history list...")
-                        while  stop_watch != True:
+                        while True:
                                 semaphore.acquire()
                                 t.append(threading.Thread(target=load_page,
-                                                          args=(self.pages,page,self.summoner_id,self.platform_id,semaphore,stop_watch)))
+                                                          args=(self.pages, page, self.summoner_id, self.platform_id, semaphore, stop_watch, rate)))
                                 t[page].start()
                                 page+=1
+                                if (stop_watch == True):
+                                        break
                                 
                         # Wait for all Thread to terminate #
                         for aThread in t:
                                 aThread.join()
-                        
                         self.full_match_history = pages_to_list(self.pages)
                         write_match_history_list(self.full_match_history,self.summoner_id,self.platform_id)
                 
@@ -168,7 +203,7 @@ class DataParser :
                 
                 print ("There are {} matches".format(len(self.full_match_history)))
                 print ("Loading match history ...")
-                
+
                 for i in range(0,len(self.full_match_history)):
                         match_id,match_pid  = self.full_match_history[i]
                         semaphore.acquire()
@@ -202,8 +237,8 @@ class DataParser :
                                         self.summoner_names[accountId] = set([summonerName])
                                 #print ("||", summonerName, "||")
                                 
-                
                 write_every_single_thing_new(self.summoners,self.summoner_name,len(self.full_match_history),self.summoner_names,self.platform_id)
+
         def dump_json (self):
                 x = 0
                 fname='dump{}.json'.format(x)
@@ -216,7 +251,8 @@ class DataParser :
                      'Summoner_match_history': self.full_match_history}
                 with open(fname,'w') as f:
                         json.dump(d,f)
-                        
+
+
 def write_every_single_thing_new (ddd,name,N,summoner_names,pid):
         if os.path.exists("results") == False: os.mkdir("results")
         if os.path.exists(os.path.join("results",pid)) == False: os.mkdir(os.path.join("results",pid))
@@ -224,7 +260,7 @@ def write_every_single_thing_new (ddd,name,N,summoner_names,pid):
         fname = os.path.join("results",pid,name+'.txt')
         print ('Writing {}'.format(fname))
         
-        f = open (fname,'w')
+        f = open (fname,'w',encoding='utf-8')
         f.write("-"*20+"\n")
         f.write("-"*20+"\n")
         f.write("There are a total of {} matches read\n".format(N))
@@ -241,7 +277,10 @@ def write_every_single_thing_new (ddd,name,N,summoner_names,pid):
                 sout = ""
                 for sid in j[v]:
                         names = reduce((lambda n, nn: n + "," + nn ) , list(summoner_names[sid]))
-                        player_id [sid] = "Account ID: {0: <11}".format(sid) + "Summoner Name: {}".format(names)
+                        try:
+                                player_id [sid] = "Account ID: {0: <11}".format(sid) + "Summoner Name: {}".format(names)
+                        except:
+                                player_id [sid] = "Account ID: {0: <11}".format(str(sid)) + "Summoner Name: {}".format(names.encode('utf-8'))
                         try:
                                 f.write ("{}:{}\n".format(player_id[sid],v))
                         except:
@@ -256,41 +295,58 @@ def write_every_single_thing_new (ddd,name,N,summoner_names,pid):
                         f.write("https://matchhistory.na.leagueoflegends.com/en/#match-details/{}/{}?tab=overview\n".format(r,m))
                 f.write('\n')
         f.close()
-def pages_to_list (pages):
+
+
+def pages_to_list(pages):
         l = []
-        for page in range(0,1+max(pages.keys())):
+        if pages == {}:
+                return l
+        for page in range(0, 1 + max(pages.keys())):
                 for match in pages[page]:
                         l.append(match)
-        return l 
-def write_match_info(match_info,match_id,platform_id):
+        return l
+
+
+def write_match_info(match_info, match_id, platform_id):
         with open(os.path.join("Match_Infos",platform_id,str(match_id)), 'w') as f:
                 json.dump(match_info, f)
                 f.close()
+
+
 def read_match_info(match_id,platform_id):
         with open(os.path.join("Match_Infos",platform_id,str(match_id)),'r') as f:
                 k = json.load(f)
                 f.close()
                 return k
 # matches list #
+
+
 def write_index(match_ids,platform_id):
         with open(os.path.join("Match_Infos",platform_id,"index.json"),'w') as f:
                 json.dump(match_ids, f)
                 f.close()
+
+
 def read_index(platform_id):
         with open(os.path.join("Match_Infos",platform_id,"index.json"),'r') as f:
                 k = json.load(f)
                 f.close()
                 return k
+
+
 def write_match_history_list(match_list,summoner_id,platform_id):
         print ('Writing result in {}'.format(os.path.join("Match_List",platform_id,str(summoner_id))))
         with open(os.path.join("Match_List",platform_id,str(summoner_id)),'w') as f:
                 json.dump(match_list, f)
         f.close()
+
 def read_match_history_list(summoner_id,platform_id):
         with open(os.path.join("Match_List",platform_id,str(summoner_id)),'r') as f:
                 t = json.load(f)
         f.close()
         return t
+
+
 def make_folders ():
         if not(os.path.lexists("Match_Infos")) : os.makedirs("Match_Infos")
         if not(os.path.lexists("Match_List")) : os.makedirs("Match_List")
@@ -299,17 +355,23 @@ def make_folders ():
                 p1 = os.path.join("Match_Infos",pid)
                 if not(os.path.exists(p)): os.mkdir (p)
                 if not(os.path.exists(p1)): os.mkdir (p1)
+
+
 def region_id_check(r):
         if r not in platform_ids:
                 raise argparse.ArgumentTypeError("{} is an invalid region.\nRegion supported are {}".format(r , str(platform_ids)))
         return r
+
+
 def summoner_name_check (n):
         if n == "" or n == [''] or n == None or n == list():
                 raise argparse.ArgumentTypeError("Summoner Name cannot be empty")
         return n
+
+
 if __name__ == "__main__":
         #apple OCE
-        #make_folders()
+        make_folders()
         #D = DataParser('apple','OCE')
         #D = DataParser('yournewmom','NA1')
         #D = DataParser('A Cute Cat Irl','NA1')
@@ -324,7 +386,7 @@ if __name__ == "__main__":
                            help='A region id {}'.format(str(platform_ids)))
         parser.add_argument('--json','-json',dest='write_json', action='store_true',
                     default=False,
-                    help='Dump json file after a search')
+                    help='Data Dump')
         
         args = parser.parse_args()
         name = reduce((lambda x,y: x + ' ' + y ),args.name)
